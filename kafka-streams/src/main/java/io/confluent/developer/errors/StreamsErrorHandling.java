@@ -34,8 +34,14 @@ public class StreamsErrorHandling {
                                                      Exception exception) {
             // This return null statement is here so the code will compile
             // You need to replace it with some logic described below
-            return null;
+
             // If the number of errors remain under 25 continue processing
+            if (errorCounter++ < 25) {
+                return DeserializationHandlerResponse.CONTINUE;
+            } else {
+                return DeserializationHandlerResponse.FAIL;
+            }
+
             // Otherwise fail
             // Note in both cases you'll return a DeserializationHandlerResponse ENUM
             // To achieve the desired behavior
@@ -52,8 +58,12 @@ public class StreamsErrorHandling {
                                                          Exception exception) {
             // This return null statement is here so the code will compile
             // You need to replace it with some logic described below
-            return null;
             // If the exception type is RecordTooLargeException continue working
+            if (exception instanceof RecordTooLargeException) {
+                return ProductionExceptionHandlerResponse.CONTINUE;
+            } else {
+                return ProductionExceptionHandlerResponse.FAIL;
+            }
             // Otherwise fail
             // Note in both cases you'll return a ProductionExceptionHandlerResponse ENUM
         }
@@ -67,14 +77,19 @@ public class StreamsErrorHandling {
         public StreamThreadExceptionResponse handle(Throwable exception) {
             // This return null statement is here so the code will compile
             // You need to replace it with some logic described below
-            return null;
             
             // Check if the exception is a StreamsException
+            Throwable originalException = exception.getCause();
+            if (originalException.getMessage().equals("Retryable transient error")) {
+                return StreamThreadExceptionResponse.REPLACE_THREAD;
+            }
+
             // If it is - get the underlying Throwable HINT: exception.getCause()
             // Then check if the error message equals "Retryable transient error"
             // If it does, replace the thread
             // Otherwise shutdown the client
             // Note in both cases return a StreamThreadExceptionResponse ENUM
+            return StreamThreadExceptionResponse.SHUTDOWN_CLIENT;
         }
     }
 
@@ -87,8 +102,8 @@ public class StreamsErrorHandling {
         // HINT: look in StreamsConfig for Deserialization and Production to get the correct
         // static string configuration names
 
-        streamsProps.put("????", null);
-        streamsProps.put("???", null);
+        streamsProps.put(StreamsConfig.DEFAULT_DESERIALIZATION_EXCEPTION_HANDLER_CLASS_CONFIG, StreamsDeserializationErrorHandler.class);
+        streamsProps.put(StreamsConfig.DEFAULT_PRODUCTION_EXCEPTION_HANDLER_CLASS_CONFIG, StreamsRecordProducerErrorHandler.class);
         
         StreamsBuilder builder = new StreamsBuilder();
         final String inputTopic = streamsProps.getProperty("error.input.topic");
@@ -114,6 +129,8 @@ public class StreamsErrorHandling {
         KafkaStreams kafkaStreams = new KafkaStreams(builder.build(), streamsProps);
         // Set an UncaughtExceptionHandler on Kafka Streams HINT: It should be type of StreamsUncaughtExceptionHandler
         // kafkaStreams.set...
+        kafkaStreams.setUncaughtExceptionHandler(new StreamsCustomUncaughtExceptionHandler());
+
         TopicLoader.runProducer();
         kafkaStreams.start();
     }

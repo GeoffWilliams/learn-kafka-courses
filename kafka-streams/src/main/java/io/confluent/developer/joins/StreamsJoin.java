@@ -78,7 +78,14 @@ public class StreamsJoin {
         KTable<String, User> userTable =
                 builder.table(tableInput, Materialized.with(Serdes.String(), userSerde));
 
-        KStream<String, CombinedOrder> combinedStream = null;
+        KStream<String, CombinedOrder> combinedStream =
+                applianceStream.join(
+                        electronicStream,
+                        orderJoiner,
+                        JoinWindows.of(Duration.ofMinutes(30)),
+                        StreamJoined.with(Serdes.String(), applianceSerde, electronicSerde)
+                )
+                .peek((key, value) -> System.out.println("Stream-Stream Join record key " + key + " value " + value));
         // create a Join between the applianceStream and the electronicStream
         // using the ValueJoiner created above, orderJoiner gets you the correct value type of CombinedOrder
         // You want to join records within 30 minutes of each other HINT: JoinWindows and Duration.ofMinutes
@@ -91,6 +98,12 @@ public class StreamsJoin {
 
 
         // Now join the combinedStream with the userTable,
+        combinedStream.leftJoin(
+                        userTable,
+                        enrichmentJoiner,
+                        Joined.with(Serdes.String(), combinedSerde, userSerde))
+                .peek((key, value) -> System.out.println("Stream-Table Join record key " + key + " value " + value))
+                .to(outputTopic, Produced.with(Serdes.String(), combinedSerde));
         // but you'll always want a result even if no corresponding entry is found in the table
         // Using the ValueJoiner created above, enrichmentJoiner, return a CombinedOrder instance enriched with user information
         // You'll need to add a Joined instance with the correct Serdes for the join state store

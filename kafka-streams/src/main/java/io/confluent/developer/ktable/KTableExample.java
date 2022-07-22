@@ -33,15 +33,18 @@ public class KTableExample {
         // along with the inputTopic create a Materialized instance and name the store
         // and provide a Serdes for the key and the value  HINT: Materialized.<String, String, KeyValueStore<Bytes, byte[]>>as
         // then use two methods to specify the key and value serde
-        KTable<String, String> firstKTable =  null;
+        KTable<String, String> firstKTable = builder.table(inputTopic,
+                Materialized.<String, String, KeyValueStore<Bytes, byte[]>>as("ktable-store")
+                .withKeySerde(Serdes.String())
+                .withValueSerde(Serdes.String()));
         
         firstKTable.filter((key, value) -> value.contains(orderNumberStart))
                 .mapValues(value -> value.substring(value.indexOf("-") + 1))
-                .filter((key, value) -> Long.parseLong(value) > 1000);
-                // Add a method here to covert the table to a stream
+                .filter((key, value) -> Long.parseLong(value) > 1000)
+                .toStream()
                 // Then uncomment the following two lines to view results on the console and write to a topic
-                //.peek((key, value) -> System.out.println("Outgoing record - key " +key +" value " + value))
-                //.to(outputTopic, Produced.with(Serdes.String(), Serdes.String()));
+                .peek((key, value) -> System.out.println("Outgoing record - key " +key +" value " + value))
+                .to(outputTopic, Produced.with(Serdes.String(), Serdes.String()));
 
 
         KafkaStreams kafkaStreams = new KafkaStreams(builder.build(), streamsProps);

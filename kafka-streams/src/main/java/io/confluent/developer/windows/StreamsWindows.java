@@ -16,6 +16,10 @@ import org.apache.kafka.streams.kstream.TimeWindows;
 
 import java.io.IOException;
 import java.time.Duration;
+import java.time.Instant;
+import java.time.ZoneId;
+import java.time.ZoneOffset;
+import java.time.format.DateTimeFormatter;
 import java.util.Map;
 import java.util.Properties;
 
@@ -23,6 +27,13 @@ import static org.apache.kafka.streams.kstream.Suppressed.*;
 import static org.apache.kafka.streams.kstream.Suppressed.BufferConfig.*;
 
 public class StreamsWindows {
+    public static String formatTimestamp(long timestamp) {
+        DateTimeFormatter      formatter = DateTimeFormatter.ISO_LOCAL_DATE_TIME
+                .withZone(ZoneId.from(ZoneOffset.UTC));
+
+        Instant instant = java.time.Instant.ofEpochMilli(timestamp);
+        return formatter.format(instant);
+    }
 
     public static void main(String[] args) throws IOException {
 
@@ -39,18 +50,21 @@ public class StreamsWindows {
 
         final KStream<String, ElectronicOrder> electronicStream =
                 builder.stream(inputTopic, Consumed.with(Serdes.String(), electronicSerde))
-                        .peek((key, value) -> System.out.println("Incoming record - key " +key +" value " + value));
+                        .peek((key, value) -> System.out.println("Incoming record - key " +key +" value " + value + "time: " + formatTimestamp(value.getTime())));
 
         electronicStream.groupByKey()
                 // Window the aggregation by the hour and allow for records to be up 5 minutes late
+                .windowedBy(TimeWindows.of(Duration.ofHours(1)).grace(Duration.ofMinutes(5)))
                 .aggregate(() -> 0.0,
                            (key, order, total) -> total + order.getPrice(),
                            Materialized.with(Serdes.String(), Serdes.Double()))
                 // Don't emit results until the window closes HINT suppression
+                .suppress(untilWindowCloses(unbounded()))
                 .toStream()
                 // When windowing Kafka Streams wraps the key in a Windowed class
                 // After converting the table to a stream it's a good idea to extract the
-                // Underlying key from the Windowed instance HINT: use map 
+                // Underlying key from the Windowed instance HINT: use map
+                .map((wk, value) -> KeyValue.pair(wk.key(),value))
                 .peek((key, value) -> System.out.println("Outgoing record - key " +key +" value " + value))
                 .to(outputTopic, Produced.with(Serdes.String(), Serdes.Double()));
 

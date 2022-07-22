@@ -45,22 +45,44 @@ public class ProcessorApi {
                 @Override
                 public void init(ProcessorContext<String, Double> context) {
                     // Save reference of the context
+                    this.context = context;
                     // Retrieve the store and save a reference
-                    // Schedule a punctuation  HINT: use context.schedule and the method you want to call is forwardAll
+                    store = context.getStateStore(storeName);
+                    this.context.schedule(Duration.ofSeconds(30), PunctuationType.STREAM_TIME, this::forwardAll);
+
                 }
 
                 private void forwardAll(final long timestamp) {
-                   // Get a KeyValueIterator HINT there's a method on the KeyValueStore
-                   // Don't forget to close the iterator! HINT use try-with resources
-                   // Iterate over the records and create a Record instance and forward downstream HINT use a method on the ProcessorContext to forward
+                    // Get a KeyValueIterator HINT there's a method on the KeyValueStore
+                    // Don't forget to close the iterator! HINT use try-with resources
+                    try (KeyValueIterator<String, Double> iterator = store.all()) {
+                        while (iterator.hasNext()) {
+                            final KeyValue<String, Double> nextKV = iterator.next();
+                            final Record<String, Double> totalPriceRecord = new Record<>(nextKV.key, nextKV.value, timestamp);
+                            context.forward(totalPriceRecord);
+                            System.out.println("Punctuation forwarded record - key " + totalPriceRecord.key() +" value " + totalPriceRecord.value());
+
+                        }
+                    }
+                    // Iterate over the records and create a Record instance and forward downstream HINT use a method on the ProcessorContext to forward
                 }
 
                 @Override
                 public void process(Record<String, ElectronicOrder> record) {
                     // Get the current total from the store HINT: use the key on the record
+                    String key = record.key();
+                    Double currentTotal = store.get(key);
                     // Don't forget to check for null
+                    if (currentTotal == null) {
+                        currentTotal = 0.0;
+                    }
                     // Add the price from the value to the current total from store and put it in the store
+                    Double newTotal = currentTotal + record.value().getPrice();
                     // HINT state stores are key-value stores
+                    store.put(key, newTotal);
+
+                    System.out.println("Processed incoming record - key " + key +" value " + record.value());
+
                 }
             };
         }
@@ -92,13 +114,31 @@ public class ProcessorApi {
         final Topology topology = new Topology();
 
         // Add a source node to the topology  HINT: topology.addSource
+        topology.addSource(
+                "source-node",
+                stringSerde.deserializer(),
+                electronicSerde.deserializer(),
+                inputTopic
+        );
         // Give it a name, add deserializers for the key and the value and provide the input topic name
        
         // Now add a processor to the topology HINT topology.addProcessor
+        topology.addProcessor(
+                "aggregate-price",
+                new TotalPriceOrderProcessorSupplier(storeName),
+                "source-node"
+        );
         // You'll give it a name, add a processor supplier HINT: a new instance and provide the store name
         // You'll also provide a parent name HINT: it's the name you used for the source node
 
         // Finally, add a sink node HINT topology.addSink
+        topology.addSink(
+                "sink-node",
+                outputTopic,
+                stringSerde.serializer(),
+                doubleSerde.serializer(),
+                "aggregate-price"
+        );
         // As before give it a name, the output topic name, serializers for the key and value HINT: string and double
         // and the name of the parent node HINT it's the name you gave the processor
 
