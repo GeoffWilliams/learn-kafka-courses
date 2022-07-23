@@ -39,6 +39,7 @@ dependencies {
         exclude group: 'org.apache.kafka', module: 'kafka-clients'
         exclude group: 'org.apache.kafka', module: 'kafka-streams'
     }
+    implementation('io.confluent:kafka-json-schema-serializer:7.2.0')
 
     testImplementation "org.apache.kafka:kafka-streams-test-utils:2.8.0"
     testImplementation "junit:junit:4.13.2"
@@ -62,7 +63,9 @@ def exerciseMap = [aggregate: basePackage + 'aggregate.StreamsAggregate',
                    time: basePackage + 'time.StreamsTimestampExtractor',
                    windows: basePackage + 'windows.StreamsWindows',
                    analysis: basePackage + 'analysis.AnalysisExample',
-                   analysis2: basePackage + 'analysis2.AnalysisExample']
+                   analysis2: basePackage + 'analysis2.AnalysisExample',
+                   analysis_json: basePackage + 'analysis_json.AnalysisExample'
+]
 
 task runStreams(type: Exec) {
 
