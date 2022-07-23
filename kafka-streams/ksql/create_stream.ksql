@@ -1,0 +1,56 @@
+-- from: https://developer.confluent.io/tutorials/flatten-nested-data/ksql.html#create-the-input-topic-with-a-stream
+
+-- read the input topic
+CREATE or replace STREAM analysis_incoming_json_flat (
+    id varchar KEY
+    , name varchar
+    , type varchar
+    , created bigint
+    , "properties" struct<item VARCHAR,
+                          location VARCHAR>
+  ) WITH (
+    KAFKA_TOPIC = 'analysis_incoming_json',
+    VALUE_FORMAT = 'JSON_SR'
+  );
+
+-- experiment to flatten once
+select
+	id
+    , name
+    , type
+    , created
+	, "properties"->item as properties_item
+	, "properties"->location as properties_location
+from
+	ANALYSIS_INCOMING_JSON_FLAT EMIT CHANGES;
+
+
+-- create stream with randomly assigned output topic name
+CREATE STREAM analysis_incoming_json_flat_flattened AS
+    select
+        id
+        , name
+        , type
+        , created
+        , "properties"->item as properties_item
+        , "properties"->location as properties_location
+    from
+        ANALYSIS_INCOMING_JSON_FLAT EMIT CHANGES;
+
+
+-- create processed output stream with nice name
+CREATE STREAM analysis_processed
+    WITH (
+        KAFKA_TOPIC = 'analysis_processed'
+        -- VALUE_FORMAT = 'JSON_SR'
+      )
+      AS
+    select
+        id
+        , name
+        , type
+        , created
+        , "properties"->item as properties_item
+        , "properties"->location as properties_location
+    from
+        ANALYSIS_INCOMING_JSON_FLAT EMIT CHANGES;
