@@ -55,7 +55,10 @@ public class AnalysisProducer implements Runnable {
             System.out.println("...not shutdown, proceeding");
             String uuid = UUID.randomUUID().toString();
 
-            AnalysisEvent analysisEvent = new AnalysisEvent(Instant.now().toEpochMilli(), "event", "payment_ok");
+            Properties props = new Properties();
+            props.put("item", "umbrella");
+            props.put("location", "au");
+            AnalysisEvent analysisEvent = new AnalysisEvent(Instant.now().toEpochMilli(), "event", "payment_ok", props);
 
             ProducerRecord<String, AnalysisEvent> record =
                     new ProducerRecord<>(AnalysisExample.INPUT_TOPIC, uuid, analysisEvent);
