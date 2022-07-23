@@ -31,8 +31,8 @@ public class AnalysisProducer implements Runnable {
                 "\"type\": \"record\", " +
                 "\"name\": \"Event\"," +
                 "\"fields\": [" +
-                    "{\"name\": \"created\", \"type\": [\"null\", \"long\"], \"logicalType\": \"timestamp-millis\", \"default\": null }," +
-                    //"{\"name\": \"created\", \"type\": \"long\", \"logicalType\": \"timestamp-millis\" }," +
+                    //"{\"name\": \"created\", \"type\": [\"null\", \"long\"], \"logicalType\": \"timestamp-millis\", \"default\": null }," +
+                    "{\"name\": \"created\", \"type\": [{\"type\": \"null\"},{ \"type\": \"long\", \"logicalType\": \"timestamp-millis\"}], \"default\": null }," +
                     "{\"name\": \"type\", \"type\": \"string\"}," +
                     "{\"name\": \"name\", \"type\": \"string\"}" +
                 "]}";
