@@ -1,5 +1,6 @@
 package io.confluent.developer.analysis2;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import io.confluent.developer.StreamsUtils;
 import io.confluent.kafka.serializers.KafkaAvroSerializer;
 import org.apache.avro.Schema;
@@ -13,6 +14,8 @@ import org.apache.kafka.clients.producer.RecordMetadata;
 import org.apache.kafka.common.serialization.StringSerializer;
 
 import java.io.IOException;
+import java.time.Instant;
+import java.util.Date;
 import java.util.List;
 import java.util.Properties;
 import java.util.UUID;
@@ -28,7 +31,8 @@ public class AnalysisProducer implements Runnable {
                 "\"type\": \"record\", " +
                 "\"name\": \"Event\"," +
                 "\"fields\": [" +
-//                    "{\"name\": \"created\", \"type\": \"string\"}," +
+                    "{\"name\": \"created\", \"type\": [\"null\", \"long\"], \"logicalType\": \"timestamp-millis\", \"default\": null }," +
+                    //"{\"name\": \"created\", \"type\": \"long\", \"logicalType\": \"timestamp-millis\" }," +
                     "{\"name\": \"type\", \"type\": \"string\"}," +
                     "{\"name\": \"name\", \"type\": \"string\"}" +
                 "]}";
@@ -63,13 +67,18 @@ public class AnalysisProducer implements Runnable {
             System.out.println("...not shutdown, proceeding");
             String uuid = UUID.randomUUID().toString();
 
+            System.out.println("...create schema parser");
             Schema.Parser parser = new Schema.Parser();
+            System.out.println("...parse schema string");
             Schema schema = parser.parse(schemaString);
+            System.out.println("...create GenericRecord");
             GenericRecord genericRecord = new GenericData.Record(schema);
-//            record.put("created", new Instant);
 
+            System.out.println("...put genericRecord values");
             genericRecord.put("type", "event");
             genericRecord.put("name", "add_to_cart");
+            genericRecord.put("created", Instant.now().toEpochMilli());
+
 
             ProducerRecord<String, GenericRecord> record =
                     new ProducerRecord<>(AnalysisExample.INPUT_TOPIC, uuid, genericRecord);

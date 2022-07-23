@@ -13,7 +13,7 @@ public class AnalysisExample {
 
     final static List<AnalysisTestConsumer> consumers = new ArrayList<>();
     final static List<AnalysisProducer> producers = new ArrayList<>();
-    final static int threadCount = 3;
+    final static int threadCount = 1;
     final static ExecutorService consumerExecutor = Executors.newFixedThreadPool(threadCount);
     final static ExecutorService producerExecutor = Executors.newFixedThreadPool(threadCount);
 
