@@ -39,10 +39,11 @@ CREATE STREAM analysis_incoming_json_flat_flattened AS
 
 
 -- create processed output stream with nice name
-CREATE STREAM analysis_processed
+CREATE or replace STREAM analysis_processed
     WITH (
-        KAFKA_TOPIC = 'analysis_processed'
-        -- VALUE_FORMAT = 'JSON_SR'
+        KAFKA_TOPIC = 'analysis_processed',
+        -- the default: VALUE_FORMAT = 'JSON_SR'
+        VALUE_FORMAT='AVRO'
       )
       AS
     select
@@ -50,6 +51,7 @@ CREATE STREAM analysis_processed
         , name
         , type
         , created
+        , FROM_UNIXTIME(created) AS created_ts
         , "properties"->item as properties_item
         , "properties"->location as properties_location
     from
